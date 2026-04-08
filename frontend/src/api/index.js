@@ -25,6 +25,7 @@ export const shipmentAPI = {
   getDriverStats: () => API.get('/shipments/driver-stats'),
   getAvailable: () => API.get('/shipments/available'),
   accept: (id) => API.put(`/shipments/${id}/accept`),
+  updateLocation: (id, data) => API.put(`/shipments/${id}/location`, data),
 };
 
 export const trackingAPI = {

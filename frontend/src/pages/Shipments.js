@@ -4,7 +4,16 @@ import Sidebar from '../components/Sidebar';
 import { shipmentAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 
-const statusClass = { Pending: 'badge-pending', 'In Transit': 'badge-transit', Delivered: 'badge-delivered', Cancelled: 'badge-cancelled', 'Pickup Confirmed': 'badge-transit', 'Out for Delivery': 'badge-transit' };
+const statusClass = {
+  Pending: 'badge-pending',
+  'In Transit': 'badge-transit',
+  Delivered: 'badge-delivered',
+  Cancelled: 'badge-cancelled',
+  'Pickup Confirmed': 'badge-transit',
+  'Out for Delivery': 'badge-transit',
+};
+
+const STATUS_OPTIONS = ['Pickup Confirmed', 'In Transit', 'Out for Delivery', 'Delivered'];
 
 export default function Shipments() {
   const { user } = useAuth();
@@ -12,15 +21,39 @@ export default function Shipments() {
   const [shipments, setShipments] = useState([]);
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null); // { shipmentId, _id, currentStatus }
+  const [locInput, setLocInput] = useState('');
+  const [statusInput, setStatusInput] = useState('');
+  const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
+  const fetchShipments = () => {
+    setLoading(true);
     shipmentAPI.getAll()
       .then(({ data }) => setShipments(data))
       .catch(() => setShipments([]))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  const statuses = ['All', 'Pending', 'Pickup Confirmed', 'In Transit', 'Delivered', 'Cancelled'];
+  useEffect(() => { fetchShipments(); }, []);
+
+  const openModal = (s) => {
+    setModal(s);
+    setLocInput(s.currentLocation || '');
+    setStatusInput(s.status);
+  };
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    try {
+      await shipmentAPI.updateLocation(modal._id, { currentLocation: locInput, status: statusInput });
+      setModal(null);
+      fetchShipments();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Update failed');
+    } finally { setUpdating(false); }
+  };
+
+  const statuses = ['All', 'Pickup Confirmed', 'In Transit', 'Out for Delivery', 'Delivered', 'Pending', 'Cancelled'];
   const filtered = filter === 'All' ? shipments : shipments.filter(s => s.status === filter);
 
   return (
@@ -77,30 +110,94 @@ export default function Shipments() {
                   </div>
                   <span className={`badge ${statusClass[s.status] || 'badge-pending'}`}>{s.status}</span>
                 </div>
+
                 <div style={styles.shipMeta}>
                   <div style={styles.metaItem}><span style={styles.metaLabel}>Goods</span><span>{s.goodsType}</span></div>
                   <div style={styles.metaItem}><span style={styles.metaLabel}>Bundles</span><span>{s.bundles}</span></div>
                   {isDriver ? (
-                    <div style={styles.metaItem}><span style={styles.metaLabel}>Shipper</span><span>{s.shipper?.businessName || s.shipper?.name || 'N/A'}</span></div>
+                    <div style={styles.metaItem}>
+                      <span style={styles.metaLabel}>Shipper</span>
+                      <span>{s.shipper?.businessName || s.shipper?.name || 'N/A'}</span>
+                    </div>
                   ) : (
-                    <div style={styles.metaItem}><span style={styles.metaLabel}>Driver</span><span>{s.driver?.name || 'Assigning...'}</span></div>
+                    <div style={styles.metaItem}>
+                      <span style={styles.metaLabel}>Driver</span>
+                      <span>{s.driver?.name || 'Assigning...'}</span>
+                    </div>
+                  )}
+                  {isDriver && s.currentLocation && (
+                    <div style={styles.metaItem}>
+                      <span style={styles.metaLabel}>Current Location</span>
+                      <span>{s.currentLocation}</span>
+                    </div>
                   )}
                   <div style={styles.metaItem}><span style={styles.metaLabel}>Date</span><span>{new Date(s.createdAt).toLocaleDateString('en-IN')}</span></div>
                   <div style={styles.metaItem}><span style={styles.metaLabel}>Cost</span><span style={{ color: '#1E3A8A', fontWeight: 700 }}>₹{s.cost?.total?.toLocaleString()}</span></div>
                 </div>
+
                 <div style={styles.shipActions}>
-                  <Link to={`/tracking?id=${s.shipmentId}`}>
-                    <button className="btn-blue" style={{ padding: '8px 20px', fontSize: 13 }}>
-                      <i className="fa-solid fa-location-dot"></i> Track
-                    </button>
-                  </Link>
-                  <button style={styles.detailBtn}>View Details</button>
+                  {isDriver ? (
+                    s.status !== 'Delivered' && s.status !== 'Cancelled' ? (
+                      <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => openModal(s)}>
+                        <i className="fa-solid fa-location-dot"></i> Update Location
+                      </button>
+                    ) : (
+                      <span style={{ color: '#22c55e', fontWeight: 600, fontSize: 13 }}>
+                        <i className="fa-solid fa-circle-check" style={{ marginRight: 6 }}></i>
+                        {s.status}
+                      </span>
+                    )
+                  ) : (
+                    <Link to={`/tracking?id=${s.shipmentId}`}>
+                      <button className="btn-blue" style={{ padding: '8px 20px', fontSize: 13 }}>
+                        <i className="fa-solid fa-location-dot"></i> Track
+                      </button>
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* Driver Update Modal */}
+      {modal && (
+        <div style={styles.modalOverlay} onClick={() => setModal(null)}>
+          <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>
+              <i className="fa-solid fa-location-dot" style={{ color: '#F97316', marginRight: 8 }}></i>
+              Update Shipment
+            </h3>
+            <p style={styles.modalRoute}>{modal.pickup} → {modal.drop}</p>
+
+            <div className="form-group">
+              <label>Current Location</label>
+              <input
+                value={locInput}
+                onChange={e => setLocInput(e.target.value)}
+                placeholder="e.g. Coimbatore, Tamil Nadu"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Update Status</label>
+              <select value={statusInput} onChange={e => setStatusInput(e.target.value)}>
+                {STATUS_OPTIONS.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '12px' }} onClick={handleUpdate} disabled={updating}>
+                {updating ? 'Updating...' : 'Update'}
+              </button>
+              <button style={styles.cancelBtn} onClick={() => setModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -125,6 +222,10 @@ const styles = {
   shipMeta: { display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16, paddingTop: 16, borderTop: '1px solid #f1f5f9' },
   metaItem: { display: 'flex', flexDirection: 'column', gap: 2 },
   metaLabel: { fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' },
-  shipActions: { display: 'flex', gap: 10 },
-  detailBtn: { padding: '8px 20px', border: '1.5px solid #e2e8f0', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#475569' },
+  shipActions: { display: 'flex', gap: 10, alignItems: 'center' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  modalCard: { background: 'white', borderRadius: 16, padding: 32, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
+  modalTitle: { fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 6, display: 'flex', alignItems: 'center' },
+  modalRoute: { color: '#64748b', fontSize: 14, marginBottom: 24 },
+  cancelBtn: { flex: 1, padding: '12px', border: '1.5px solid #e2e8f0', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#64748b' },
 };

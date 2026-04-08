@@ -39,9 +39,16 @@ const getMyShipments = async (req, res) => {
   try {
     let shipments;
     if (req.user.role === 'driver') {
-      shipments = await Shipment.find({ driver: req.user._id })
-        .populate('shipper', 'businessName name')
+      shipments = await Shipment.find({ driver: req.user._id.toString() })
+        .populate('shipper', 'businessName name phone')
         .sort({ createdAt: -1 });
+      // fallback: also try ObjectId match
+      if (!shipments.length) {
+        const mongoose = require('mongoose');
+        shipments = await Shipment.find({ driver: new mongoose.Types.ObjectId(req.user._id) })
+          .populate('shipper', 'businessName name phone')
+          .sort({ createdAt: -1 });
+      }
     } else {
       shipments = await Shipment.find({ shipper: req.user._id })
         .populate('driver', 'name phone')
@@ -141,4 +148,21 @@ const getDriverStats = async (req, res) => {
   }
 };
 
-module.exports = { createShipment, getMyShipments, getShipmentById, updateShipmentStatus, getDashboardStats, getAvailableShipments, acceptShipment, getDriverStats };
+const updateLocation = async (req, res) => {
+  const { currentLocation, status } = req.body;
+  try {
+    const shipment = await Shipment.findOne({ _id: req.params.id, driver: req.user._id });
+    if (!shipment) return res.status(404).json({ message: 'Shipment not found or not assigned to you' });
+    if (currentLocation) shipment.currentLocation = currentLocation;
+    if (status) {
+      shipment.status = status;
+      shipment.timeline.push({ status, note: `Driver updated: ${currentLocation || status}` });
+    }
+    await shipment.save();
+    res.json(shipment);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { createShipment, getMyShipments, getShipmentById, updateShipmentStatus, getDashboardStats, getAvailableShipments, acceptShipment, getDriverStats, updateLocation };

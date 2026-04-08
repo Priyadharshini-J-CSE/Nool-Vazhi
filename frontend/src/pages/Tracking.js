@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
@@ -8,21 +8,6 @@ import { useAuth } from '../context/AuthContext';
 
 const timelineSteps = ['Booked', 'Pickup Confirmed', 'In Transit', 'Out for Delivery', 'Delivered'];
 
-const demoData = {
-  shipmentId: 'NV12345678',
-  pickup: 'Mumbai, Maharashtra',
-  drop: 'Pune, Maharashtra',
-  status: 'In Transit',
-  currentLocation: 'Khopoli, Maharashtra',
-  estimatedDelivery: new Date(Date.now() + 86400000).toISOString(),
-  driver: { contactPerson: 'Ravi Kumar', phone: '+91 98765 43210', rating: 4.8 },
-  timeline: [
-    { status: 'Booked', timestamp: new Date(Date.now() - 7200000).toISOString(), note: 'Shipment booked successfully' },
-    { status: 'Pickup Confirmed', timestamp: new Date(Date.now() - 5400000).toISOString(), note: 'Driver picked up goods' },
-    { status: 'In Transit', timestamp: new Date(Date.now() - 3600000).toISOString(), note: 'On the way to destination' },
-  ],
-};
-
 export default function Tracking() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -31,14 +16,21 @@ export default function Tracking() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleTrack = async (e) => {
-    e.preventDefault();
-    setLoading(true); setError('');
+  // Auto-track if id is in URL
+  useEffect(() => {
+    if (searchParams.get('id')) handleTrack(null, searchParams.get('id'));
+  }, []);
+
+  const handleTrack = async (e, id) => {
+    if (e) e.preventDefault();
+    const tid = id || trackingId;
+    if (!tid) return;
+    setLoading(true); setError(''); setData(null);
     try {
-      const res = await trackingAPI.track(trackingId);
+      const res = await trackingAPI.track(tid);
       setData(res.data);
     } catch {
-      setData(demoData);
+      setError('Shipment not found. Please check the tracking ID.');
     } finally { setLoading(false); }
   };
 
@@ -116,12 +108,12 @@ export default function Tracking() {
                 </h3>
                 {data.driver ? (
                   <div style={styles.driverInfo}>
-                    <div style={styles.driverAvatar}>{data.driver.contactPerson?.[0]}</div>
+                    <div style={styles.driverAvatar}>{(data.driver.name || data.driver.contactPerson || 'D')[0]}</div>
                     <div>
-                      <div style={styles.driverName}>{data.driver.contactPerson}</div>
+                      <div style={styles.driverName}>{data.driver.name || data.driver.contactPerson}</div>
                       <div style={styles.driverRating}>
                         <i className="fa-solid fa-star" style={{ color: '#f59e0b', marginRight: 4 }}></i>
-                        {data.driver.rating} Rating
+                        {data.driver.rating || 'N/A'} Rating
                       </div>
                       <div style={styles.driverPhone}>
                         <i className="fa-solid fa-phone" style={{ marginRight: 4 }}></i>

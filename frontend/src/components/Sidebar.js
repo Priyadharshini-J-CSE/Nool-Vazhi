@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const navItems = [
+const orgNavItems = [
   { path: '/dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
   { path: '/shipments', icon: 'fa-solid fa-box', label: 'Shipments' },
   { path: '/pricing', icon: 'fa-solid fa-tag', label: 'Pricing' },
   { path: '/tracking', icon: 'fa-solid fa-location-dot', label: 'Tracking' },
+  { path: '/trust', icon: 'fa-solid fa-shield-halved', label: 'Trust & Safety' },
+];
+
+const driverNavItems = [
+  { path: '/dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
+  { path: '/shipments', icon: 'fa-solid fa-truck', label: 'My Trips' },
   { path: '/trust', icon: 'fa-solid fa-shield-halved', label: 'Trust & Safety' },
 ];
 
@@ -15,6 +21,8 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const isDriver = user?.role === 'driver';
+  const navItems = isDriver ? driverNavItems : orgNavItems;
 
   const handleLogout = () => { logout(); navigate('/'); };
 
