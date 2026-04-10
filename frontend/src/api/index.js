@@ -13,6 +13,8 @@ export const authAPI = {
   registerDriver: (data) => API.post('/auth/register/driver', data),
   loginOrg: (data) => API.post('/auth/login/organization', data),
   loginDriver: (data) => API.post('/auth/login/driver', data),
+  forgotPassword: (data) => API.post('/auth/forgot-password', data),
+  resetPassword: (userId, token, data) => API.post(`/auth/reset-password/${userId}/${token}`, data),
   profile: () => API.get('/auth/profile'),
 };
 
@@ -34,6 +36,18 @@ export const trackingAPI = {
 
 export const pricingAPI = {
   estimate: (bundles, season) => API.get(`/pricing/estimate?bundles=${bundles}&season=${season}`),
+};
+
+export const tripAPI = {
+  create: (data) => API.post('/trips', data),
+  search: (from, to) => API.get(`/trips/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  book: (data) => API.post('/trips/book', data),
+  myTrips: () => API.get('/trips/my-trips'),
+  myBookings: () => API.get('/trips/my-bookings'),
+  tripBookings: (id) => API.get(`/trips/${id}/bookings`),
+  updateStatus: (id, status) => API.put(`/trips/${id}/status`, { status }),
+  driverStats: () => API.get('/trips/driver-stats'),
+  locations: () => API.get('/trips/locations'),
 };
 
 export default API;

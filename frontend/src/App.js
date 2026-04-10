@@ -12,6 +12,10 @@ import Shipments from './pages/Shipments';
 import Pricing from './pages/Pricing';
 import Tracking from './pages/Tracking';
 import Trust from './pages/Trust';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Marketplace from './pages/Marketplace';
+import DriverTrips from './pages/DriverTrips';
 import './index.css';
 
 const PrivateRoute = ({ children }) => {
@@ -32,8 +36,12 @@ function AppRoutes() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/tracking" element={<Tracking />} />
       <Route path="/trust" element={<Trust />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:userId/:token" element={<ResetPassword />} />
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/shipments" element={<PrivateRoute><Shipments /></PrivateRoute>} />
+      <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
+      <Route path="/driver-trips" element={<PrivateRoute><DriverTrips /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

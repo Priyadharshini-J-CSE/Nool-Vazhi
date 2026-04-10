@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [available, setAvailable] = useState([]);
   const [availLoading, setAvailLoading] = useState(false);
   const [accepting, setAccepting] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState('');
 
   useEffect(() => {
     if (isDriver) {
@@ -85,6 +86,9 @@ export default function Dashboard() {
   const msgText = msg.replace(/^(success|error):/, '');
   const statCards = isDriver ? driverStatCards(stats) : orgStatCards(stats);
 
+  const uniqueLocations = [...new Set(available.flatMap(s => [s.pickup, s.drop]))].sort();
+  const filteredAvailable = selectedLocation ? available.filter(s => s.pickup === selectedLocation || s.drop === selectedLocation) : available;
+
   return (
     <div style={styles.layout}>
       <Sidebar />
@@ -119,10 +123,26 @@ export default function Dashboard() {
         {/* Driver: Available Shipments */}
         {isDriver && (
           <div className="card">
-            <h2 style={styles.cardTitle}>
-              <i className="fa-solid fa-truck-ramp-box" style={{ color: '#1E3A8A', marginRight: 8 }}></i>
-              Available Shipments
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+              <h2 style={{ ...styles.cardTitle, marginBottom: 0 }}>
+                <i className="fa-solid fa-truck-ramp-box" style={{ color: '#1E3A8A', marginRight: 8 }}></i>
+                Available Shipments
+              </h2>
+              {available.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <i className="fa-solid fa-location-dot" style={{ color: '#64748b' }}></i>
+                  <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>Filter by location:</span>
+                  <select
+                    value={selectedLocation}
+                    onChange={e => setSelectedLocation(e.target.value)}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, fontWeight: 600, color: '#475569', cursor: 'pointer', background: 'white' }}
+                  >
+                    <option value="">All Locations</option>
+                    {uniqueLocations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
             {availLoading ? (
               <div style={styles.emptyState}>
                 <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: 32, color: '#cbd5e1', marginBottom: 12 }}></i>
@@ -135,7 +155,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div style={styles.availableList}>
-                {available.map(s => (
+                {filteredAvailable.map(s => (
                   <div key={s._id} style={styles.availableCard}>
                     <div style={styles.availableLeft}>
                       <div style={styles.routeRow}>

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const orgNavItems = [
   { path: '/dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
+  { path: '/marketplace', icon: 'fa-solid fa-store', label: 'Marketplace' },
   { path: '/shipments', icon: 'fa-solid fa-box', label: 'Shipments' },
   { path: '/pricing', icon: 'fa-solid fa-tag', label: 'Pricing' },
   { path: '/tracking', icon: 'fa-solid fa-location-dot', label: 'Tracking' },
@@ -12,7 +13,8 @@ const orgNavItems = [
 
 const driverNavItems = [
   { path: '/dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
-  { path: '/shipments', icon: 'fa-solid fa-truck', label: 'My Trips' },
+  { path: '/driver-trips', icon: 'fa-solid fa-truck-moving', label: 'My Trips' },
+  { path: '/shipments', icon: 'fa-solid fa-box', label: 'Old Shipments' },
   { path: '/trust', icon: 'fa-solid fa-shield-halved', label: 'Trust & Safety' },
 ];
 

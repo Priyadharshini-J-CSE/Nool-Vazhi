@@ -50,6 +50,11 @@ export default function DriverLogin() {
             <label>Password</label>
             <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="Your password" required />
           </div>
+          <div style={{ textAlign: 'right', marginBottom: 12 }}>
+            <Link to="/forgot-password" style={{ color: '#F97316', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+              <i className="fa-solid fa-lock-open" style={{ marginRight: 4 }}></i>Forgot Password?
+            </Link>
+          </div>
           <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: 16, marginTop: 8, background: '#F97316', borderColor: '#F97316' }} disabled={loading}>
             {loading ? 'Signing In...' : <><i className="fa-solid fa-truck-moving"></i> Sign In as Driver</>}
           </button>

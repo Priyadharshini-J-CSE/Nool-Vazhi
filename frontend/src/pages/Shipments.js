@@ -21,8 +21,7 @@ export default function Shipments() {
   const [shipments, setShipments] = useState([]);
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // { shipmentId, _id, currentStatus }
-  const [locInput, setLocInput] = useState('');
+  const [modal, setModal] = useState(null);
   const [statusInput, setStatusInput] = useState('');
   const [updating, setUpdating] = useState(false);
 
@@ -36,16 +35,12 @@ export default function Shipments() {
 
   useEffect(() => { fetchShipments(); }, []);
 
-  const openModal = (s) => {
-    setModal(s);
-    setLocInput(s.currentLocation || '');
-    setStatusInput(s.status);
-  };
+  const openModal = (s) => { setModal(s); setStatusInput(s.status); };
 
   const handleUpdate = async () => {
     setUpdating(true);
     try {
-      await shipmentAPI.updateLocation(modal._id, { currentLocation: locInput, status: statusInput });
+      await shipmentAPI.updateLocation(modal._id, { status: statusInput });
       setModal(null);
       fetchShipments();
     } catch (err) {
@@ -127,8 +122,8 @@ export default function Shipments() {
                   )}
                   {isDriver && s.currentLocation && (
                     <div style={styles.metaItem}>
-                      <span style={styles.metaLabel}>Current Location</span>
-                      <span>{s.currentLocation}</span>
+                      <span style={styles.metaLabel}>GPS Location</span>
+                      <span><i className="fa-solid fa-satellite-dish" style={{ color: '#22c55e', marginRight: 4 }}></i>{s.currentLocation}</span>
                     </div>
                   )}
                   <div style={styles.metaItem}><span style={styles.metaLabel}>Date</span><span>{new Date(s.createdAt).toLocaleDateString('en-IN')}</span></div>
@@ -139,7 +134,7 @@ export default function Shipments() {
                   {isDriver ? (
                     s.status !== 'Delivered' && s.status !== 'Cancelled' ? (
                       <button className="btn-primary" style={{ padding: '8px 20px', fontSize: 13 }} onClick={() => openModal(s)}>
-                        <i className="fa-solid fa-location-dot"></i> Update Location
+                        <i className="fa-solid fa-pen"></i> Update Status
                       </button>
                     ) : (
                       <span style={{ color: '#22c55e', fontWeight: 600, fontSize: 13 }}>
@@ -161,25 +156,19 @@ export default function Shipments() {
         )}
       </main>
 
-      {/* Driver Update Modal */}
+      {/* Driver Status Modal */}
       {modal && (
         <div style={styles.modalOverlay} onClick={() => setModal(null)}>
           <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>
-              <i className="fa-solid fa-location-dot" style={{ color: '#F97316', marginRight: 8 }}></i>
-              Update Shipment
+              <i className="fa-solid fa-pen" style={{ color: '#F97316', marginRight: 8 }}></i>
+              Update Status
             </h3>
             <p style={styles.modalRoute}>{modal.pickup} → {modal.drop}</p>
-
-            <div className="form-group">
-              <label>Current Location</label>
-              <input
-                value={locInput}
-                onChange={e => setLocInput(e.target.value)}
-                placeholder="e.g. Coimbatore, Tamil Nadu"
-              />
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#15803d', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fa-solid fa-satellite-dish"></i>
+              Location is tracked automatically via GPS
             </div>
-
             <div className="form-group">
               <label>Update Status</label>
               <select value={statusInput} onChange={e => setStatusInput(e.target.value)}>
@@ -188,7 +177,6 @@ export default function Shipments() {
                 ))}
               </select>
             </div>
-
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
               <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '12px' }} onClick={handleUpdate} disabled={updating}>
                 {updating ? 'Updating...' : 'Update'}
