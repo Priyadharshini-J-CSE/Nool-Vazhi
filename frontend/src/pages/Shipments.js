@@ -85,8 +85,8 @@ export default function Shipments() {
         ) : filtered.length === 0 ? (
           <div style={styles.empty}>
             <i className="fa-solid fa-inbox" style={{ fontSize: 64, color: '#cbd5e1', marginBottom: 16 }}></i>
-            <p>{isDriver ? 'No trips yet. Accept shipments from the dashboard.' : 'No shipments found.'}</p>
-            {!isDriver && (
+            <p>{isDriver ? 'No trips yet. Accept shipments from the dashboard.' : filter === 'All' ? 'No shipments yet.' : `No shipments with status "${filter}".`}</p>
+            {!isDriver && shipments.length === 0 && (
               <Link to="/dashboard"><button className="btn-primary" style={{ marginTop: 16 }}>Book Your First Shipment</button></Link>
             )}
           </div>
@@ -198,7 +198,7 @@ const styles = {
   sub: { color: '#64748b', marginTop: 4 },
   filterRow: { display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' },
   filterBtn: { padding: '8px 18px', border: '1.5px solid #e2e8f0', borderRadius: 20, background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b', transition: 'all 0.2s' },
-  filterActive: { background: '#1E3A8A', color: 'white', borderColor: '#1E3A8A' },
+  filterActive: { background: '#1E3A8A', color: 'white', border: '1.5px solid #1E3A8A' },
   loading: { textAlign: 'center', padding: 60, color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   empty: { textAlign: 'center', padding: 80, color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   list: { display: 'flex', flexDirection: 'column', gap: 16 },

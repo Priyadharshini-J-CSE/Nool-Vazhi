@@ -23,7 +23,6 @@ export default function Navbar() {
         <div className="nav-links" style={styles.links}>
           <Link to="/" style={styles.link}>Home</Link>
           <Link to="/pricing" style={styles.link}>Pricing</Link>
-          <Link to="/tracking" style={styles.link}>Track</Link>
           <Link to="/trust" style={styles.link}>Safety</Link>
         </div>
 
@@ -58,7 +57,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div style={styles.mobileMenu}>
-          {[['/', 'Home'], ['/pricing', 'Pricing'], ['/tracking', 'Track'], ['/trust', 'Safety']].map(([path, label]) => (
+          {[['/', 'Home'], ['/pricing', 'Pricing'], ['/trust', 'Safety']].map(([path, label]) => (
             <Link key={path} to={path} style={styles.mobileLink} onClick={() => setMenuOpen(false)}>{label}</Link>
           ))}
           <div style={styles.mobileDivider} />

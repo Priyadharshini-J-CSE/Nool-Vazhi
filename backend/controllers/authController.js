@@ -19,7 +19,19 @@ const registerOrg = async (req, res) => {
   const { name, phone, email, location, businessName, gst, industry, password } = req.body;
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already registered' });
-    const user = await User.create({ name, phone, email, location, businessName, gst, industry, password, role: 'organization' });
+
+    const kyc = {};
+    if (req.files?.orgProof?.[0]) {
+      kyc.orgProof = { url: req.files.orgProof[0].path, publicId: req.files.orgProof[0].filename };
+    }
+    if (req.files?.gstCertificate?.[0]) {
+      kyc.gstCertificate = { url: req.files.gstCertificate[0].path, publicId: req.files.gstCertificate[0].filename };
+    }
+    if (req.files?.aadharDoc?.[0]) {
+      kyc.aadharDoc = { url: req.files.aadharDoc[0].path, publicId: req.files.aadharDoc[0].filename };
+    }
+
+    const user = await User.create({ name, phone, email, location, businessName, gst, industry, password, role: 'organization', kyc });
     respond(user, res, 201);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
@@ -28,7 +40,19 @@ const registerDriver = async (req, res) => {
   const { name, phone, email, location, licenseNumber, vehicleType, vehicleNumber, capacity, password } = req.body;
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already registered' });
-    const user = await User.create({ name, phone, email, location, licenseNumber, vehicleType, vehicleNumber, capacity, password, role: 'driver' });
+
+    const kyc = {};
+    if (req.files?.licenseDoc?.[0]) {
+      kyc.licenseDoc = { url: req.files.licenseDoc[0].path, publicId: req.files.licenseDoc[0].filename };
+    }
+    if (req.files?.insuranceDoc?.[0]) {
+      kyc.insuranceDoc = { url: req.files.insuranceDoc[0].path, publicId: req.files.insuranceDoc[0].filename };
+    }
+    if (req.files?.aadharDoc?.[0]) {
+      kyc.aadharDoc = { url: req.files.aadharDoc[0].path, publicId: req.files.aadharDoc[0].filename };
+    }
+
+    const user = await User.create({ name, phone, email, location, licenseNumber, vehicleType, vehicleNumber, capacity, password, role: 'driver', kyc });
     respond(user, res, 201);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };

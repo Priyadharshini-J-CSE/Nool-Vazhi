@@ -24,6 +24,19 @@ const userSchema = new mongoose.Schema(
 
     rating: { type: Number, default: 0 },
     isVerified: { type: Boolean, default: false },
+
+    // KYC Documents
+    kyc: {
+      // Organization docs
+      orgProof: { url: { type: String, default: '' }, publicId: { type: String, default: '' } },
+      gstCertificate: { url: { type: String, default: '' }, publicId: { type: String, default: '' } },
+      // Driver docs
+      licenseDoc: { url: { type: String, default: '' }, publicId: { type: String, default: '' } },
+      insuranceDoc: { url: { type: String, default: '' }, publicId: { type: String, default: '' } },
+      // Common
+      aadharDoc: { url: { type: String, default: '' }, publicId: { type: String, default: '' } },
+    },
+    kycStatus: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
   },
   { timestamps: true }
 );

@@ -9,8 +9,8 @@ API.interceptors.request.use((config) => {
 });
 
 export const authAPI = {
-  registerOrg: (data) => API.post('/auth/register/organization', data),
-  registerDriver: (data) => API.post('/auth/register/driver', data),
+  registerOrg: (data) => API.post('/auth/register/organization', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  registerDriver: (data) => API.post('/auth/register/driver', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   loginOrg: (data) => API.post('/auth/login/organization', data),
   loginDriver: (data) => API.post('/auth/login/driver', data),
   forgotPassword: (data) => API.post('/auth/forgot-password', data),
