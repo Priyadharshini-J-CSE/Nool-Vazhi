@@ -5,14 +5,17 @@ import { useAuth } from '../context/AuthContext';
 const orgNavItems = [
   { path: '/dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
   { path: '/marketplace', icon: 'fa-solid fa-store', label: 'Marketplace' },
+  { path: '/auction', icon: 'fa-solid fa-gavel', label: 'Auctions' },
   { path: '/shipments', icon: 'fa-solid fa-box', label: 'Shipments' },
-  { path: '/tracking', icon: 'fa-solid fa-location-dot', label: 'Tracking' },
+  { path: '/profile', icon: 'fa-solid fa-user-pen', label: 'My Profile' },
 ];
 
 const driverNavItems = [
   { path: '/dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
   { path: '/driver-trips', icon: 'fa-solid fa-truck-moving', label: 'My Trips' },
+  { path: '/driver-auction', icon: 'fa-solid fa-gavel', label: 'Bid Auctions' },
   { path: '/shipments', icon: 'fa-solid fa-box', label: 'Old Shipments' },
+  { path: '/profile', icon: 'fa-solid fa-user-pen', label: 'My Profile' },
 ];
 
 export default function Sidebar() {

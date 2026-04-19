@@ -21,6 +21,7 @@ function CapacityBar({ total, available }) {
 }
 
 const STATUS_COLORS = { ACTIVE: '#d1fae5|#065f46', FULL: '#fee2e2|#991b1b', COMPLETED: '#dbeafe|#1e40af', CANCELLED: '#f1f5f9|#64748b' };
+const TRIP_STATUS_OPTIONS = ['Pickup Confirmed', 'In Transit', 'Out for Delivery', 'Delivered'];
 
 export default function DriverTrips() {
   const { user } = useAuth();
@@ -33,6 +34,12 @@ export default function DriverTrips() {
   const [expandedTrip, setExpandedTrip] = useState(null);
   const [tripBookings, setTripBookings] = useState({});
   const [locations, setLocations] = useState([]);
+  const [locModal, setLocModal] = useState(null);
+  const [locInput, setLocInput] = useState('');
+  const [tripStatusInput, setTripStatusInput] = useState('In Transit');
+  const [updatingLoc, setUpdatingLoc] = useState(false);
+  const [bookingStatusMap, setBookingStatusMap] = useState({}); // { bookingId: selectedStatus }
+  const [updatingBooking, setUpdatingBooking] = useState(null);
 
   const fetchTrips = () => {
     setLoading(true);
@@ -78,6 +85,62 @@ export default function DriverTrips() {
       await tripAPI.updateStatus(tripId, status);
       fetchTrips();
     } catch (err) { alert(err.response?.data?.message || 'Update failed'); }
+  };
+
+  const handleStartTrip = async (tripId) => {
+    if (!window.confirm('Start this trip? It will no longer be visible to new shippers.')) return;
+    try {
+      await tripAPI.startTrip(tripId);
+      fetchTrips();
+    } catch (err) { alert(err.response?.data?.message || 'Failed to start trip'); }
+  };
+
+  const handleAcceptBooking = async (bookingId, tripId) => {
+    try {
+      await tripAPI.acceptBooking(bookingId);
+      // Refresh bookings for this trip
+      const { data } = await tripAPI.tripBookings(tripId);
+      setTripBookings(prev => ({ ...prev, [tripId]: data }));
+      fetchTrips();
+    } catch (err) { alert(err.response?.data?.message || 'Failed'); }
+  };
+
+  const handleRejectBooking = async (bookingId, tripId) => {
+    try {
+      await tripAPI.updateStatus(tripId, 'CANCELLED').catch(() => {});
+      // Just refetch
+      const { data } = await tripAPI.tripBookings(tripId);
+      setTripBookings(prev => ({ ...prev, [tripId]: data }));
+    } catch (err) { alert('Failed'); }
+  };
+
+  const handleUpdateBookingStatus = async (bookingId, tripId) => {
+    const status = bookingStatusMap[bookingId];
+    if (!status) return;
+    setUpdatingBooking(bookingId);
+    try {
+      await tripAPI.updateBookingStatus(bookingId, status);
+      const { data } = await tripAPI.tripBookings(tripId);
+      setTripBookings(prev => ({ ...prev, [tripId]: data }));
+    } catch (err) { alert(err.response?.data?.message || 'Update failed'); }
+    finally { setUpdatingBooking(null); }
+  };
+
+  const openLocModal = (trip) => {
+    setLocModal(trip);
+    setLocInput(trip.currentLocation || '');
+    setTripStatusInput('In Transit');
+  };
+
+  const handleUpdateLocation = async () => {
+    setUpdatingLoc(true);
+    try {
+      await tripAPI.updateLocation(locModal._id, { currentLocation: locInput });
+      setLocModal(null);
+      fetchTrips();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Update failed');
+    } finally { setUpdatingLoc(false); }
   };
 
   return (
@@ -211,12 +274,32 @@ export default function DriverTrips() {
                       <i className={`fa-solid ${expandedTrip === trip._id ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ marginRight: 6 }}></i>
                       {expandedTrip === trip._id ? 'Hide' : 'View'} Bookings
                     </button>
-                    {trip.status === 'ACTIVE' && (
+
+                    {/* Start Trip — only if has confirmed bookings and not yet started */}
+                    {trip.status === 'ACTIVE' && !trip.isStarted &&
+                      tripBookings[trip._id]?.some(b => b.status === 'CONFIRMED') && (
+                      <button style={styles.startBtn} onClick={() => handleStartTrip(trip._id)}>
+                        <i className="fa-solid fa-play"></i> Start Trip
+                      </button>
+                    )}
+
+                    {/* Update Location — only after trip is started */}
+                    {trip.status === 'ACTIVE' && trip.isStarted && (
+                      <button style={styles.updateLocBtn} onClick={() => openLocModal(trip)}>
+                        <i className="fa-solid fa-location-dot"></i> Update Location
+                      </button>
+                    )}
+
+                    {/* Mark Completed — only after started and all confirmed bookings delivered */}
+                    {trip.status === 'ACTIVE' && trip.isStarted &&
+                      tripBookings[trip._id]?.length > 0 &&
+                      tripBookings[trip._id].filter(b => b.status === 'CONFIRMED').every(b => b.status === 'DELIVERED') && (
                       <button style={styles.completeBtn} onClick={() => handleStatusUpdate(trip._id, 'COMPLETED')}>
                         <i className="fa-solid fa-circle-check"></i> Mark Completed
                       </button>
                     )}
-                    {trip.status === 'ACTIVE' && (
+
+                    {trip.status === 'ACTIVE' && !trip.isStarted && (
                       <button style={styles.cancelBtn} onClick={() => handleStatusUpdate(trip._id, 'CANCELLED')}>
                         <i className="fa-solid fa-xmark"></i> Cancel
                       </button>
@@ -239,15 +322,48 @@ export default function DriverTrips() {
                                 <div style={{ fontWeight: 600, fontSize: 14 }}>{b.shipper?.businessName || b.shipper?.name}</div>
                                 <div style={{ color: '#64748b', fontSize: 12 }}>{b.goodsType} · {b.bookedWeight} kg</div>
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontWeight: 700, color: '#1E3A8A' }}>₹{b.totalPrice?.toLocaleString()}</div>
-                                <div style={{ fontSize: 11, color: '#94a3b8' }}>₹{b.pricePerKg}/kg</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontWeight: 700, color: '#1E3A8A' }}>₹{b.totalPrice?.toLocaleString()}</div>
+                                  <div style={{ fontSize: 11, color: '#94a3b8' }}>₹{b.pricePerKg}/kg</div>
+                                </div>
+                                <span style={{
+                                  background: b.status === 'CONFIRMED' ? '#d1fae5' : b.status === 'CANCELLED' ? '#fee2e2' : b.status === 'DELIVERED' ? '#dbeafe' : '#fef3c7',
+                                  color: b.status === 'CONFIRMED' ? '#065f46' : b.status === 'CANCELLED' ? '#991b1b' : b.status === 'DELIVERED' ? '#1e40af' : '#92400e',
+                                  padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                                }}>{b.status.replace(/_/g, ' ')}</span>
+                                {b.status !== 'CANCELLED' && b.status !== 'DELIVERED' && (
+                                  <>
+                                    <select
+                                      value={bookingStatusMap[b._id] || ''}
+                                      onChange={e => setBookingStatusMap(prev => ({ ...prev, [b._id]: e.target.value }))}
+                                      style={styles.statusSelect}
+                                    >
+                                      <option value="">Update status</option>
+                                      <option value="IN_TRANSIT">In Transit</option>
+                                      <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                                      <option value="DELIVERED">Delivered</option>
+                                    </select>
+                                    <button
+                                      style={styles.updateStatusBtn}
+                                      onClick={() => handleUpdateBookingStatus(b._id, trip._id)}
+                                      disabled={!bookingStatusMap[b._id] || updatingBooking === b._id}
+                                    >
+                                      {updatingBooking === b._id ? '...' : <i className="fa-solid fa-check"></i>}
+                                    </button>
+                                  </>
+                                )}
+                                {b.status !== 'CONFIRMED' && b.status !== 'CANCELLED' && b.status !== 'IN_TRANSIT' && b.status !== 'OUT_FOR_DELIVERY' && b.status !== 'DELIVERED' && (
+                                  <button style={styles.acceptBtn} onClick={() => handleAcceptBooking(b._id, trip._id)}>
+                                    <i className="fa-solid fa-check"></i> Accept
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))}
                           <div style={styles.bookingTotal}>
-                            Total booked: {tripBookings[trip._id].reduce((s, b) => s + b.bookedWeight, 0)} kg &nbsp;·&nbsp;
-                            ₹{tripBookings[trip._id].reduce((s, b) => s + b.totalPrice, 0).toLocaleString()} earned
+                            Total booked: {tripBookings[trip._id].filter(b => b.status !== 'CANCELLED').reduce((s, b) => s + b.bookedWeight, 0)} kg &nbsp;·&nbsp;
+                            ₹{tripBookings[trip._id].filter(b => b.status !== 'CANCELLED').reduce((s, b) => s + b.totalPrice, 0).toLocaleString()} earned
                           </div>
                         </div>
                       )}
@@ -259,6 +375,49 @@ export default function DriverTrips() {
           </div>
         )}
       </main>
+
+      {/* Location Update Modal */}
+      {locModal && (
+        <div style={styles.modalOverlay} onClick={() => setLocModal(null)}>
+          <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1e293b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="fa-solid fa-location-dot" style={{ color: '#F97316' }}></i>
+              Update Location
+            </h3>
+            <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>
+              {locModal.fromLocation} → {locModal.toLocation} · {locModal.totalCapacity} kg
+            </p>
+            <div className="form-group">
+              <label>Current Location</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={locInput}
+                  onChange={e => setLocInput(e.target.value)}
+                  placeholder="e.g. Coimbatore, Tamil Nadu"
+                  style={{ flex: 1 }}
+                />
+                <button type="button" style={styles.gpsBtn} onClick={() => {
+                  if (!navigator.geolocation) return alert('GPS not supported');
+                  navigator.geolocation.getCurrentPosition(
+                    pos => setLocInput(`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`),
+                    () => alert('Allow location access to use GPS')
+                  );
+                }}>
+                  <i className="fa-solid fa-satellite-dish"></i> GPS
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '12px' }}
+                onClick={handleUpdateLocation} disabled={updatingLoc}>
+                <i className="fa-solid fa-floppy-disk"></i>
+                {updatingLoc ? 'Updating...' : 'Update'}
+              </button>
+              <button style={styles.modalCancelBtn} onClick={() => setLocModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -291,4 +450,13 @@ const styles = {
   bookingRows: { display: 'flex', flexDirection: 'column', gap: 8 },
   bookingRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' },
   bookingTotal: { fontSize: 13, fontWeight: 700, color: '#1E3A8A', padding: '8px 14px', background: '#eff6ff', borderRadius: 8, marginTop: 4 },
+  acceptBtn: { padding: '6px 12px', border: 'none', borderRadius: 6, background: '#d1fae5', color: '#065f46', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 },
+  statusSelect: { padding: '5px 8px', border: '1.5px solid #e2e8f0', borderRadius: 6, fontSize: 12, outline: 'none', cursor: 'pointer', background: 'white' },
+  updateStatusBtn: { padding: '6px 10px', border: 'none', borderRadius: 6, background: '#1E3A8A', color: 'white', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center' },
+  startBtn: { padding: '7px 16px', border: 'none', borderRadius: 8, background: '#F97316', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 },
+  updateLocBtn: { padding: '7px 16px', border: 'none', borderRadius: 8, background: '#1E3A8A', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  modalCard: { background: 'white', borderRadius: 16, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
+  gpsBtn: { padding: '8px 14px', border: '1.5px solid #1E3A8A', borderRadius: 8, background: '#eff6ff', color: '#1E3A8A', cursor: 'pointer', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' },
+  modalCancelBtn: { flex: 1, padding: '12px', border: '1.5px solid #e2e8f0', borderRadius: 10, background: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#64748b' },
 };

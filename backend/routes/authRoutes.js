@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { registerOrg, registerDriver, loginOrg, loginDriver, getProfile, forgotPassword, resetPassword } = require('../controllers/authController');
+const { registerOrg, registerDriver, loginOrg, loginDriver, getProfile, updateProfile, forgotPassword, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const { upload } = require('../middleware/upload');
 
@@ -27,5 +27,6 @@ router.post('/login/driver', loginDriver);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:userId/:token', resetPassword);
 router.get('/profile', protect, getProfile);
+router.put('/profile', protect, updateProfile);
 
 module.exports = router;

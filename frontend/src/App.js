@@ -16,6 +16,9 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Marketplace from './pages/Marketplace';
 import DriverTrips from './pages/DriverTrips';
+import ShipperAuction from './pages/ShipperAuction';
+import DriverAuction from './pages/DriverAuction';
+import Profile from './pages/Profile';
 import './index.css';
 
 const PrivateRoute = ({ children }) => {
@@ -42,6 +45,9 @@ function AppRoutes() {
       <Route path="/shipments" element={<PrivateRoute><Shipments /></PrivateRoute>} />
       <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
       <Route path="/driver-trips" element={<PrivateRoute><DriverTrips /></PrivateRoute>} />
+      <Route path="/auction" element={<PrivateRoute><ShipperAuction /></PrivateRoute>} />
+      <Route path="/driver-auction" element={<PrivateRoute><DriverAuction /></PrivateRoute>} />
+      <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -50,7 +56,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

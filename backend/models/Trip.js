@@ -26,6 +26,9 @@ const tripSchema = new mongoose.Schema(
     },
 
     minimumBookingKg: { type: Number, default: 1 },
+    currentLocation: { type: String, default: '' },
+    isStarted: { type: Boolean, default: false },
+    startedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

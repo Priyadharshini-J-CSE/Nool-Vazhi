@@ -50,6 +50,7 @@ const searchTrips = async (req, res) => {
       toLocation: { $regex: to.trim(), $options: 'i' },
       status: 'ACTIVE',
       availableCapacity: { $gt: 0 },
+      isStarted: { $ne: true },
     })
       .populate('driver', 'name phone rating vehicleType vehicleNumber')
       .sort({ pricePerKg: 1 });
@@ -214,4 +215,73 @@ const getLocations = async (req, res) => {
   }
 };
 
-module.exports = { createTrip, searchTrips, bookTrip, getMyTrips, getMyBookings, getTripBookings, updateTripStatus, getDriverTripStats, getLocations };
+// Driver: Accept one booking, auto-reject others on same trip
+const acceptBooking = async (req, res) => {
+  const { bookingId } = req.body;
+  try {
+    const booking = await Booking.findById(bookingId).populate('trip');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.trip.driver.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: 'Not your trip' });
+
+    // Accept this booking
+    booking.status = 'CONFIRMED';
+    await booking.save();
+
+    // Auto-reject all other PENDING bookings on same trip
+    await Booking.updateMany(
+      { trip: booking.trip._id, _id: { $ne: bookingId }, status: 'CONFIRMED' },
+      { status: 'CANCELLED' }
+    );
+
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Driver: Update current location of a trip
+const updateLocation = async (req, res) => {
+  const { currentLocation } = req.body;
+  try {
+    const trip = await Trip.findOne({ _id: req.params.id, driver: req.user._id });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+    if (currentLocation) trip.currentLocation = currentLocation;
+    await trip.save();
+    res.json(trip);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Driver: Start a trip — hides it from shipper marketplace
+const startTrip = async (req, res) => {
+  try {
+    const trip = await Trip.findOne({ _id: req.params.id, driver: req.user._id });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+    trip.isStarted = true;
+    trip.startedAt = new Date();
+    await trip.save();
+    res.json(trip);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Driver: Update individual booking delivery status
+const updateBookingStatus = async (req, res) => {
+  const { deliveryStatus } = req.body;
+  try {
+    const booking = await Booking.findById(req.params.id).populate('trip');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.trip.driver.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: 'Not your trip' });
+    booking.status = deliveryStatus;
+    await booking.save();
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { createTrip, searchTrips, bookTrip, getMyTrips, getMyBookings, getTripBookings, updateTripStatus, getDriverTripStats, getLocations, acceptBooking, updateLocation, startTrip, updateBookingStatus };

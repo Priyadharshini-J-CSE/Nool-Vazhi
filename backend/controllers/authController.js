@@ -19,18 +19,10 @@ const registerOrg = async (req, res) => {
   const { name, phone, email, location, businessName, gst, industry, password } = req.body;
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already registered' });
-
     const kyc = {};
-    if (req.files?.orgProof?.[0]) {
-      kyc.orgProof = { url: req.files.orgProof[0].path, publicId: req.files.orgProof[0].filename };
-    }
-    if (req.files?.gstCertificate?.[0]) {
-      kyc.gstCertificate = { url: req.files.gstCertificate[0].path, publicId: req.files.gstCertificate[0].filename };
-    }
-    if (req.files?.aadharDoc?.[0]) {
-      kyc.aadharDoc = { url: req.files.aadharDoc[0].path, publicId: req.files.aadharDoc[0].filename };
-    }
-
+    if (req.files?.orgProof?.[0]) { const f = req.files.orgProof[0]; kyc.orgProof = { url: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`, publicId: f.originalname }; }
+    if (req.files?.gstCertificate?.[0]) { const f = req.files.gstCertificate[0]; kyc.gstCertificate = { url: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`, publicId: f.originalname }; }
+    if (req.files?.aadharDoc?.[0]) { const f = req.files.aadharDoc[0]; kyc.aadharDoc = { url: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`, publicId: f.originalname }; }
     const user = await User.create({ name, phone, email, location, businessName, gst, industry, password, role: 'organization', kyc });
     respond(user, res, 201);
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -40,29 +32,26 @@ const registerDriver = async (req, res) => {
   const { name, phone, email, location, licenseNumber, vehicleType, vehicleNumber, capacity, password } = req.body;
   try {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already registered' });
-
     const kyc = {};
-    if (req.files?.licenseDoc?.[0]) {
-      kyc.licenseDoc = { url: req.files.licenseDoc[0].path, publicId: req.files.licenseDoc[0].filename };
-    }
-    if (req.files?.insuranceDoc?.[0]) {
-      kyc.insuranceDoc = { url: req.files.insuranceDoc[0].path, publicId: req.files.insuranceDoc[0].filename };
-    }
-    if (req.files?.aadharDoc?.[0]) {
-      kyc.aadharDoc = { url: req.files.aadharDoc[0].path, publicId: req.files.aadharDoc[0].filename };
-    }
-
+    if (req.files?.licenseDoc?.[0]) { const f = req.files.licenseDoc[0]; kyc.licenseDoc = { url: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`, publicId: f.originalname }; }
+    if (req.files?.insuranceDoc?.[0]) { const f = req.files.insuranceDoc[0]; kyc.insuranceDoc = { url: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`, publicId: f.originalname }; }
+    if (req.files?.aadharDoc?.[0]) { const f = req.files.aadharDoc[0]; kyc.aadharDoc = { url: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`, publicId: f.originalname }; }
     const user = await User.create({ name, phone, email, location, licenseNumber, vehicleType, vehicleNumber, capacity, password, role: 'driver', kyc });
     respond(user, res, 201);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    console.error('registerDriver error:', err.message);
+    if (err.message.includes('document too large') || err.code === 10334) {
+      return res.status(400).json({ message: 'Files are too large. Please upload smaller images (under 1MB each).' });
+    }
+    res.status(500).json({ message: err.message });
+  }
 };
 
 const loginOrg = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email, role: 'organization' });
-    if (!user || !(await user.matchPassword(password)))
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ email, role: 'organization' }).select('-kyc');
+    if (!user || !(await user.matchPassword(password))) return res.status(401).json({ message: 'Invalid credentials' });
     respond(user, res);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
@@ -70,15 +59,34 @@ const loginOrg = async (req, res) => {
 const loginDriver = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email, role: 'driver' });
-    if (!user || !(await user.matchPassword(password)))
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ email, role: 'driver' }).select('-kyc');
+    if (!user || !(await user.matchPassword(password))) return res.status(401).json({ message: 'Invalid credentials' });
     respond(user, res);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const getProfile = async (req, res) => {
-  res.json(req.user);
+  try {
+    const user = await User.findById(req.user._id).select('-password -kyc');
+    res.json(user);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const fields = ['name', 'phone', 'location', 'businessName', 'gst', 'industry', 'licenseNumber', 'vehicleType', 'vehicleNumber', 'capacity'];
+    fields.forEach(f => { if (req.body[f] !== undefined) user[f] = req.body[f]; });
+    await user.save();
+    res.json({
+      _id: user._id, name: user.name, phone: user.phone, email: user.email,
+      location: user.location, role: user.role, businessName: user.businessName,
+      gst: user.gst, industry: user.industry, licenseNumber: user.licenseNumber,
+      vehicleType: user.vehicleType, vehicleNumber: user.vehicleNumber,
+      capacity: user.capacity, kycStatus: user.kycStatus,
+    });
+  } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const forgotPassword = async (req, res) => {
@@ -86,50 +94,25 @@ const forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'No account found with this email' });
-
     const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET + user.password, { expiresIn: '15m' });
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${user._id}/${resetToken}`;
-
     let transporter;
     if (process.env.EMAIL_PASS && process.env.EMAIL_PASS !== 'your_gmail_app_password') {
-      transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-        tls: { rejectUnauthorized: true },
-      });
+      transporter = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, tls: { rejectUnauthorized: true } });
     } else {
       const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        auth: { user: testAccount.user, pass: testAccount.pass },
-      });
+      transporter = nodemailer.createTransport({ host: 'smtp.ethereal.email', port: 587, auth: { user: testAccount.user, pass: testAccount.pass } });
     }
-
     const info = await transporter.sendMail({
       from: `"Nool-Vazhi" <${process.env.EMAIL_USER || 'noreply@nool-vazhi.in'}>`,
       to: user.email,
       subject: 'Reset Your Password — Nool-Vazhi',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;border:1px solid #e2e8f0;border-radius:12px">
-          <h2 style="color:#1E3A8A">Nool-Vazhi Password Reset</h2>
-          <p>Hi <strong>${user.name}</strong>,</p>
-          <p>Click the button below to reset your password. This link expires in <strong>15 minutes</strong>.</p>
-          <a href="${resetUrl}" style="display:inline-block;margin:20px 0;padding:12px 28px;background:#F97316;color:white;border-radius:8px;text-decoration:none;font-weight:700">Reset Password</a>
-          <p style="color:#64748b;font-size:13px">Or copy this link: ${resetUrl}</p>
-          <p style="color:#64748b;font-size:13px">If you didn't request this, ignore this email.</p>
-        </div>
-      `,
+      html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;border:1px solid #e2e8f0;border-radius:12px"><h2 style="color:#1E3A8A">Nool-Vazhi Password Reset</h2><p>Hi <strong>${user.name}</strong>,</p><p>Click below to reset your password. Expires in <strong>15 minutes</strong>.</p><a href="${resetUrl}" style="display:inline-block;margin:20px 0;padding:12px 28px;background:#F97316;color:white;border-radius:8px;text-decoration:none;font-weight:700">Reset Password</a><p style="color:#64748b;font-size:13px">Or copy: ${resetUrl}</p></div>`,
     });
-
-    // For development: log preview URL if using Ethereal
     if (nodemailer.getTestMessageUrl(info)) {
       console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
-      return res.json({ message: 'Reset link generated. Check server console for preview URL (dev mode).', previewUrl: nodemailer.getTestMessageUrl(info), resetUrl });
+      return res.json({ message: 'Reset link generated.', previewUrl: nodemailer.getTestMessageUrl(info), resetUrl });
     }
-
     res.json({ message: 'Password reset link sent to your email' });
   } catch (err) {
     console.error('Email error:', err.message);
@@ -143,7 +126,6 @@ const resetPassword = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'Invalid link' });
-
     jwt.verify(token, process.env.JWT_SECRET + user.password);
     user.password = password;
     await user.save();
@@ -153,4 +135,4 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { registerOrg, registerDriver, loginOrg, loginDriver, getProfile, forgotPassword, resetPassword };
+module.exports = { registerOrg, registerDriver, loginOrg, loginDriver, getProfile, updateProfile, forgotPassword, resetPassword };

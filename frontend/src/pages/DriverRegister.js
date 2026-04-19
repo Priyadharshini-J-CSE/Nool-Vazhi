@@ -139,7 +139,7 @@ export default function DriverRegister() {
               <i className="fa-solid fa-id-card" style={{ color: '#c2410c', marginRight: 8 }}></i>
               KYC Verification Documents
             </div>
-            <p style={styles.kycNote}>Both documents are mandatory. Upload clear scans or photos (JPG, PNG, PDF · max 5MB)</p>
+            <p style={styles.kycNote}>Both documents are mandatory. Upload clear scans or photos (JPG, PNG, PDF · max 1MB each)</p>
             <div style={styles.row}>
               <FileUpload
                 label="Driving License"

@@ -16,6 +16,7 @@ export const authAPI = {
   forgotPassword: (data) => API.post('/auth/forgot-password', data),
   resetPassword: (userId, token, data) => API.post(`/auth/reset-password/${userId}/${token}`, data),
   profile: () => API.get('/auth/profile'),
+  updateProfile: (data) => API.put('/auth/profile', data),
 };
 
 export const shipmentAPI = {
@@ -38,6 +39,21 @@ export const pricingAPI = {
   estimate: (bundles, season) => API.get(`/pricing/estimate?bundles=${bundles}&season=${season}`),
 };
 
+export const auctionAPI = {
+  // Shipper
+  create: (data) => API.post('/auctions', data),
+  myAuctions: () => API.get('/auctions/my'),
+  getBids: (id) => API.get(`/auctions/${id}/bids`),
+  selectDrivers: (id, data) => API.post(`/auctions/${id}/select`, data),
+  closeAuction: (id) => API.put(`/auctions/${id}/close`),
+  // Driver
+  openAuctions: () => API.get('/auctions/open'),
+  placeBid: (data) => API.post('/auctions/bid', data),
+  mySelections: () => API.get('/auctions/driver/selections'),
+  respond: (data) => API.post('/auctions/driver/respond', data),
+  updateLocation: (id, data) => API.put(`/auctions/${id}/update-location`, data),
+};
+
 export const tripAPI = {
   create: (data) => API.post('/trips', data),
   search: (from, to) => API.get(`/trips/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
@@ -46,6 +62,10 @@ export const tripAPI = {
   myBookings: () => API.get('/trips/my-bookings'),
   tripBookings: (id) => API.get(`/trips/${id}/bookings`),
   updateStatus: (id, status) => API.put(`/trips/${id}/status`, { status }),
+  updateLocation: (id, data) => API.put(`/trips/${id}/location`, data),
+  acceptBooking: (bookingId) => API.post('/trips/accept-booking', { bookingId }),
+  startTrip: (id) => API.put(`/trips/${id}/start`),
+  updateBookingStatus: (bookingId, deliveryStatus) => API.put(`/trips/booking/${bookingId}/status`, { deliveryStatus }),
   driverStats: () => API.get('/trips/driver-stats'),
   locations: () => API.get('/trips/locations'),
 };
