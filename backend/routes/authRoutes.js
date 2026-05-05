@@ -2,23 +2,23 @@ const express = require('express');
 const router = express.Router();
 const { registerOrg, registerDriver, loginOrg, loginDriver, getProfile, updateProfile, forgotPassword, resetPassword } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
-const { upload } = require('../middleware/upload');
+const { upload, handleUploadErrors } = require('../middleware/upload');
 
 router.post('/register/organization',
-  upload.fields([
+  handleUploadErrors(upload.fields([
     { name: 'orgProof', maxCount: 1 },
     { name: 'gstCertificate', maxCount: 1 },
     { name: 'aadharDoc', maxCount: 1 },
-  ]),
+  ])),
   registerOrg
 );
 
 router.post('/register/driver',
-  upload.fields([
+  handleUploadErrors(upload.fields([
     { name: 'licenseDoc', maxCount: 1 },
     { name: 'insuranceDoc', maxCount: 1 },
     { name: 'aadharDoc', maxCount: 1 },
-  ]),
+  ])),
   registerDriver
 );
 

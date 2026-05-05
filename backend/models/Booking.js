@@ -18,6 +18,13 @@ const bookingSchema = new mongoose.Schema(
       enum: ['CONFIRMED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
       default: 'CONFIRMED',
     },
+
+    // Earnings / payment tracking
+    advancePaid:    { type: Boolean, default: false },
+    advanceAmount:  { type: Number,  default: 0 },
+    remainingPaid:  { type: Boolean, default: false },
+    remainingAmount:{ type: Number,  default: 0 },
+    paymentNote:    { type: String,  default: '' },
   },
   { timestamps: true }
 );

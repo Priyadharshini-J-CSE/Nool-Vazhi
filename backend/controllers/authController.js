@@ -40,9 +40,6 @@ const registerDriver = async (req, res) => {
     respond(user, res, 201);
   } catch (err) {
     console.error('registerDriver error:', err.message);
-    if (err.message.includes('document too large') || err.code === 10334) {
-      return res.status(400).json({ message: 'Files are too large. Please upload smaller images (under 1MB each).' });
-    }
     res.status(500).json({ message: err.message });
   }
 };

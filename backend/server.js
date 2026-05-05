@@ -18,6 +18,7 @@ app.use('/api/trips', require('./routes/tripRoutes'));
 app.use('/api/auctions', require('./routes/auctionRoutes'));
 app.use('/api/tracking', require('./routes/trackingRoutes'));
 app.use('/api/pricing', require('./routes/pricingRoutes'));
+app.use('/api/earnings', require('./routes/earningsRoutes'));
 
 // Health check
 app.get('/', (req, res) => res.json({ message: 'Nool-Vazhi API running' }));

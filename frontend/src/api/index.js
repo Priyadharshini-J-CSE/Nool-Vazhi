@@ -54,6 +54,11 @@ export const auctionAPI = {
   updateLocation: (id, data) => API.put(`/auctions/${id}/update-location`, data),
 };
 
+export const earningsAPI = {
+  get: (filter = 'today') => API.get(`/earnings?filter=${filter}`),
+  updatePayment: (bookingId, data) => API.put(`/earnings/${bookingId}/payment`, data),
+};
+
 export const tripAPI = {
   create: (data) => API.post('/trips', data),
   search: (from, to) => API.get(`/trips/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
